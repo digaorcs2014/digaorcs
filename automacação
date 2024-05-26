@@ -1,0 +1,84 @@
+import selenium
+from selenium import webdriver
+from selenium.webdriver.chrome.service import Service
+from webdriver_manager.chrome import ChromeDriverManager
+from selenium.webdriver.common.by import By
+service = Service(ChromeDriverManager().install())
+nav = webdriver.Chrome(service=service)
+nav.get("https://licenciamento.cetesb.sp.gov.br/cetesb/processo_consulta.asp")
+
+
+
+
+
+from selenium.webdriver.common.keys import Keys
+import pyperclip
+import time
+import pandas as pd
+import csv
+tabela = pd.read_csv("saida_sp2.csv", encoding = 'latin-1')
+
+links_empresas = []
+for linha in tabela.index:
+    if linha < 10:
+        CEP = tabela.loc[linha, "CEP"]
+        nav.find_element('xpath', '//*[@id="cep"]').click()  
+        nav.find_element('xpath', '//*[@id="cep"]').send_keys(str(CEP))
+
+        for tags in (nav.find_elements(By.TAG_NAME, "a")):
+            links_empresas.append(tags.get_attribute('href'))
+            nav.find_element('xpath', '/html/body/form/table/tbody/tr[15]/td/input').click()
+
+for link in links_empresas:
+    nav.get(link)
+    # mostra o link para acessar as informações
+    print(link) 
+    # pega o nome da empresa
+    print(nav.find_element('xpath', '//*[@id="form1"]/table[1]/tbody/tr[3]/td').text)
+    # pega o numero do cadastro
+    print(nav.find_element('xpath','//*[@id="form1"]/table[1]/tbody/tr[7]/td[1]').text)
+    # pega o CEP
+    print(nav.find_element('xpath','//*[@id="form1"]/table[1]/tbody/tr[5]/td[3]').text)
+
+    for linhas in (nav.find_elements('xpath','//*[@id="form1"]/table[2]/tbody')):
+        print(linhas.text)
+        
+    for links_documentos in (nav.find_elements(By.TAG_NAME, "a")):
+        # pega o link do documentos
+        print('documento')
+        print(links_documentos.get_attribute('href'))
+    
+dados_empresas = []
+
+for link in links_empresas:
+    nav.get(link)
+    
+    # Obtenha os dados que você deseja para cada empresa
+    nome_empresa = nav.find_element(By.XPATH, '//*[@id="form1"]/table[1]/tbody/tr[3]/td').text
+    numero_cadastro = nav.find_element(By.XPATH, '//*[@id="form1"]/table[1]/tbody/tr[7]/td[1]').text
+    cep_empresa = nav.find_element(By.XPATH, '//*[@id="form1"]/table[1]/tbody/tr[5]/td[3]').text
+
+    # Coloque os dados em uma lista
+    dados_empresa = [nome_empresa, numero_cadastro, cep_empresa]
+    
+    # Obtenha os dados da tabela e adicione-os à lista
+    for linha in nav.find_elements(By.XPATH, '//*[@id="form1"]/table[2]/tbody/tr'):
+        dados_empresa.append(linha.text)
+    
+    # Adicione os dados da empresa à lista geral
+    dados_empresas.append(dados_empresa)
+
+    # Obtenha os links dos documentos e adicione-os à lista
+    links_documentos = [link_doc.get_attribute('href') for link_doc in nav.find_elements(By.TAG_NAME, "a")]
+    dados_empresas[-1].extend(links_documentos)
+
+
+
+
+# Encerre o navegador
+nav.quit()
+
+
+
+
+display(tabela)
